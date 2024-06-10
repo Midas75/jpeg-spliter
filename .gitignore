@@ -1,0 +1,6 @@
+raw
+*.exe
+.vscode
+__pycache__
+sub/*
+!sub/.gitkeep
