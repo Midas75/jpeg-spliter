@@ -1,3 +1,4 @@
+// Linux: gcc split_example.c -o split_example -std=c11 -O3 
 #include "jpeg_spliter.c"
 int main()
 {

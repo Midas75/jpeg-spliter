@@ -1,14 +1,14 @@
 # JPEG Spliter
 此库用于对**具备特定格式**的JPEG图像，在单线程以**极高的性能**进行分割（$O(n)$，其中n为JPEG文件的bytes数），是[该任务](https://gitee.com/sun-zhongjie-0426/unity-native-rendering-plugin-d3-d11-cuda)的**下游补充**，包括下述内容：
 - [x] 【高性能】c实现与示例
-- [ ] c的对比测试
+- [x] c的对比测试
 - [x] 【易于理解】python实现与示例
 - [x] python的对比测试
 - [x] 基于c的bytearray实现以及基本功能测试
 - [x] python对bytes进行迭代的性能测试
 - [ ] 自动读取JPEG相关参数并进行验证
 - [ ] 对JPEG各格式进行兼容性测试 
-- [ ] 更多实验数据
+- [x] 更多实验数据
 - [ ] 更多语言版本的实现
 ## 开始使用
 两种语言的实现均有示例，不依赖**基本库**外的任何内容，可直接使用。注意代码中**读写文件**不会影响耗时的计算。
@@ -81,14 +81,17 @@ python版本的最简单示例就是[./split_example.py]()，没有必要再展�
 - 尺寸：约3822KB
 
 采用的平台中，可能相关的项列举如下：
-| 配置      | 参数                          |
-| --------- | ----------------------------- |
-| CPU       | i7-12700                      |
-| MEM       | DDR4 64GB 2400MHz             |
-| OS        | Windows10                     |
-| C编译器   | MinGW GCC8.1.0 64-bit Release |
-| C编译优化 | -O3                           |
-| Python    | 3.11.7                        |
+| 配置           | 参数                                          |
+| -------------- | --------------------------------------------- |
+| CPU            | i7-12700                                      |
+| MEM            | DDR4 64GB 2400MHz                             |
+| OS             | Windows10                                     |
+| C编译器        | MinGW GCC8.1.0 64-bit Release                 |
+| C编译优化      | -O3                                           |
+| Python         | 3.11.7                                        |
+| OS(Linux)      | Linux 5.4.0-177-generic(Ubuntu 20.04.6)       |
+| C编译器(Linux) | gcc 9.4.0                                     |
+| C编译优化      | gcc ljt_example.cpp -o ljt_example -ljpeg -O3 |
 
 分别运行[c语言实现](./split_example.c)、[python实现](./split_example.py)、[python PIL实现](./pil_example.py)，这将会对一张内存中的jpeg执行200次切分操作，并且不包括文件读写时间，则测试结果如下：
 | 实现                       | 平均处理时长(ms) | FPS    | 备注                                                                                                                           |
@@ -103,14 +106,24 @@ python版本的最简单示例就是[./split_example.py]()，没有必要再展�
 | c                          | 6.075            | 164.60 | `trim=true`; </br>将byte_array的扩容因子从默认的1.5改为2; </br>将split函数中，对byte_array的初始化空间从JPEG尺寸的1/10改为1/20 |
 | c                          | 5.240            | 190.83 | 对byte_array的初始化空间采用默认的10                                                                                           |
 | python                     | 201.19           | 4.97   |                                                                                                                                |
-| pil                        | 422.7            | 2.36   |                                                                                                                                |
-| pil                        | 184. 81          | 5.41   | 不执行`tile.save(BytesIO())`                                                                                                   |
+| [opencv](./cv_example.py)  | 355.87           | 2.81   |                                                                                                                                |
+| [pil](./pil_example.py)    | 422.7            | 2.36   |                                                                                                                                |
+| [pil](./pil_example.py)    | 184. 81          | 5.41   | 不执行`tile.save(BytesIO())`                                                                                                   |
 | [bet](./byte_enum_test.py) | 113.07           | 8.84   | 不做任何处理，仅枚举并读取图片中的每个byte，以阐述python实现的主要性能瓶颈                                                     |
+
+此外，考察在Linux平台下的性能（因为可以直接下载可用的[libjpeg-turbo](https://libjpeg-turbo.org/)：`apt install libjpeg-turbo-dev8`）。尽管调用的头与连接的动态库均名为libjpeg，但实际其源码是libjpeg-turbo的实现。
+| 实现                     | 平均处理时长(ms) | FPS    | 备注         |
+| ------------------------ | ---------------- | ------ | ------------ |
+| c                        | 5.216            | 191.73 |              |
+| c                        | 2.849            | 351.01 | 不开启O3优化 |
+| [ljt](./ljt_example.cpp) | 147.66           | 6.77   |              |
+| [ljt](./ljt_example.cpp) | 147.79           | 6.76   | 不开启O3优化 |
 ### 总结
 1. 在c语言版本中，主要的性能浮动来自于byte_array实现中，基于memcpy的扩容。小尺寸的扩容并不会带来过多的性能影响，然而在最后对于约300KB的数据采用memcpy扩容/收缩时，会带来较多的性能损失，因此本项目会将每个byte_array的初始尺寸约定为1/10的最大尺寸（分割为20张图的场景），该数值可以尽可能地避免扩容行为的发生。
 2. 经测试，扩容因子是1.5（Java ArrayList）还是2（C++ vector）没有显著的性能影响，Java选取1.5主要来自于对JVM中减少内存碎片的考量。此外，1.5的实现已经通过位运算以避免实数运算。
 3. python实现相对c存在约40倍的性能差距，尽管在实现上，均尽可能地采用了最优的方法，但通过在python中对bytes进行枚举测试可以发现性能开销基本来自对其的枚举。
 4. PIL的实现中，实际上在将`tile.save(0)`去掉后，可以得到一个比python jpeg spliter更好的性能表现，然而在实际业务场景中，读取分割数据的期望下一步是将图片基于网络发送，因此不能够发送RGB格式的原始数据。
+5. 在Linux平台开展的的测试中，是否开启O3对此项目影响很大，且性能远超Windows（完全相同的硬件平台），可能是Windows会将业务线程调到其他核心导致的。此外，基于libjpeg-turbo的实现性能仅比PIL略高。
 
 ## 原理
 主要考虑了JPEG的结构，快速的将RST间的MCU分解到各个子图，并复用JPEG头信息，从而在不解码JPEG的情况下完成图片的分割。
