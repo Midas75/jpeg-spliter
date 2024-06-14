@@ -114,7 +114,7 @@ typedef struct
  * @param param
  * @return int
  */
-inline int get_mcu_sub(int counter, const spliter_param *param)
+int get_mcu_sub(int counter, const spliter_param *param)
 {
     int c = param->single_width * param->col / param->dri / MCU_LENGTH;
     int x = counter % c * param->dri * MCU_LENGTH / param->single_width;
