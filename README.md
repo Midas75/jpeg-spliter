@@ -15,6 +15,7 @@
 - [./split_example.c]()
 - [./split_example.py]()
 - [./CSharp/SplitExample.cs]()
+
 这些示例将根路径下的大图![](./unity_texture2d_big.jpg)拆分到sub文件夹下。
 ### c
 c语言版本的最简单示例，这一示例与[./split_example.c]()基本相同，此外，c版本示例中有**大量的注释**：
@@ -125,10 +126,10 @@ C#版本的最简单示例也很简单，见[./CSharp/SplitExample.cs]()，建�
 此外，考察在Linux平台下的性能（因为可以直接下载可用的[libjpeg-turbo](https://libjpeg-turbo.org/)：`apt install libjpeg-turbo-dev8`）。尽管调用的头与连接的动态库均名为libjpeg，但实际其源码是libjpeg-turbo的实现。
 | 实现                     | 平均处理时长(ms) | FPS    | 备注         |
 | ------------------------ | ---------------- | ------ | ------------ |
-| c                        | 5.216            | 191.73 |              |
-| c                        | 2.849            | 351.01 | 不开启O3优化 |
-| [ljt](./ljt_example.cpp) | 147.66           | 6.77   |              |
-| [ljt](./ljt_example.cpp) | 147.79           | 6.76   | 不开启O3优化 |
+| c                        | 2.849            | 351.01 |              |
+| c                        | 5.216            | 191.73 | 不开启O3优化 |
+| [ljt](./ljt_example.cpp) | 147.79           | 6.76   |              |
+| [ljt](./ljt_example.cpp) | 147.66           | 6.77   | 不开启O3优化 |
 ### 总结
 1. 在c语言版本中，主要的性能浮动来自于byte_array实现中，基于memcpy的扩容。小尺寸的扩容并不会带来过多的性能影响，然而在最后对于约300KB的数据采用memcpy扩容/收缩时，会带来较多的性能损失，因此本项目会将每个byte_array的初始尺寸约定为1/10的最大尺寸（分割为20张图的场景），该数值可以尽可能地避免扩容行为的发生。
 2. 经测试，扩容因子是1.5（Java ArrayList）还是2（C++ vector）没有显著的性能影响，Java选取1.5主要来自于对JVM中减少内存碎片的考量。此外，1.5的实现已经通过位运算以避免实数运算。
