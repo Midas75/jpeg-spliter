@@ -4,6 +4,7 @@
 #include <time.h>
 #include <stdbool.h>
 #include <string.h>
+#include <immintrin.h>
 #define MCU_LENGTH 8
 
 /**
@@ -177,8 +178,49 @@ double split(uint8_t *data, size_t length, spliter_param *param, byte_array **ou
         }
         int counter = 0;
         int lasti = start_mcu;
-
-        for (size_t i = start_mcu; i < length; ++i)
+        const __m256i pattern = _mm256_set1_epi8(0xFF);
+        const size_t chunk_size = 32;
+        const size_t cl = length - chunk_size;
+        size_t i = start_mcu;
+        for (; i <= cl; i += chunk_size)
+        {
+            __m256i chunk = _mm256_loadu_si256((__m256i *)(data + i));
+            __m256i cmp_result = _mm256_cmpeq_epi8(chunk, pattern);
+            int mask = _mm256_movemask_epi8(cmp_result);
+            if (mask != 0)
+            {
+                for (size_t j = 0; j < chunk_size; j++)
+                {
+                    if (mask & (1 << j))
+                    {
+                        int ii = i + j;
+                        int sub = get_mcu_sub(counter, param);
+                        if (data[ii + 1] >= 0xD0 && data[ii + 1] <= 0xD7)
+                        {
+                            data[ii + 1] = 0xD0 + (sub_rsti[sub]++);
+                            sub_rsti[sub] %= 8;
+                            ba_write(out[sub], data + lasti, ii - lasti + 2);
+                            counter++;
+                            lasti = ii + 2;
+                        }
+                        else if (data[ii + 1] == 0xDA)
+                        {
+                            ba_write(out[sub], data + lasti, ii - lasti);
+                            ffda[ffda_count++] = ii;
+                            i = length;
+                            break;
+                        }
+                        else if (data[ii + 1] == 0xD9)
+                        {
+                            ba_write(out[sub], data + lasti, ii - lasti);
+                            i = length;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        for (; i < length; i++)
         {
             if (data[i] == 0xFF)
             {
