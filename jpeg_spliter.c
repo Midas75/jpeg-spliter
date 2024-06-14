@@ -133,7 +133,7 @@ double split(uint8_t *data, size_t length, spliter_param *param, byte_array **ou
         }
         else
         {
-            out[i] = ba_new_with_length((length/count)<<1);
+            out[i] = ba_new_with_length((length/count)<<2);
         }
     }
 

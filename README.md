@@ -9,13 +9,13 @@
 - [ ] 自动读取JPEG相关参数并进行验证
 - [ ] 对JPEG各格式进行兼容性测试 
 - [x] 更多实验数据
-- [ ] 更多语言版本的实现
+- [x] 更多语言版本的实现
 ## 开始使用
-两种语言的实现均有示例，不依赖**基本库**外的任何内容，可直接使用。注意代码中**读写文件**不会影响耗时的计算。
+多种语言的实现均有示例，不依赖**基本库**外的任何内容，可直接使用。注意代码中**读写文件**不会影响耗时的计算。
 - [./split_example.c]()
 - [./split_example.py]()
-
-这两个示例将根路径下的大图![](./unity_texture2d_big.jpg)拆分到sub文件夹下。
+- [./CSharp/SplitExample.cs]()
+这些示例将根路径下的大图![](./unity_texture2d_big.jpg)拆分到sub文件夹下。
 ### c
 c语言版本的最简单示例，这一示例与[./split_example.c]()基本相同，此外，c版本示例中有**大量的注释**：
 ```c
@@ -43,6 +43,8 @@ fwrite(ba[0]->data,1,ba[0]->length,f);
 ```
 ### python
 python版本的最简单示例就是[./split_example.py]()，没有必要再展开阐述了，不妨将代码拷贝到chatGPT，让chatGPT帮忙讲讲
+### C#
+C#版本的最简单示例也很简单，见[./CSharp/SplitExample.cs]()，建议让chatGPT进行阐述
 ## 参数设置
 此节对用到的参数（spliter_param）进行介绍，部分参数需要对JPEG有一定的理解：
 | 参数          | 类型 | 作用                                                                                                              |
@@ -81,19 +83,22 @@ python版本的最简单示例就是[./split_example.py]()，没有必要再展�
 - 尺寸：约3822KB
 
 采用的平台中，可能相关的项列举如下：
-| 配置           | 参数                                          |
-| -------------- | --------------------------------------------- |
-| CPU            | i7-12700                                      |
-| MEM            | DDR4 64GB 2400MHz                             |
-| OS             | Windows10                                     |
-| C编译器        | MinGW GCC8.1.0 64-bit Release                 |
-| C编译优化      | -O3                                           |
-| Python         | 3.11.7                                        |
-| OS(Linux)      | Linux 5.4.0-177-generic(Ubuntu 20.04.6)       |
-| C编译器(Linux) | gcc 9.4.0                                     |
-| C编译优化      | gcc ljt_example.cpp -o ljt_example -ljpeg -O3 |
+| 配置             | 参数                                          |
+| ---------------- | --------------------------------------------- |
+| CPU              | i7-12700                                      |
+| MEM              | DDR4 64GB 2400MHz                             |
+| OS               | Windows10                                     |
+| C编译器          | MinGW GCC8.1.0 64-bit Release                 |
+| C编译优化        | -O3                                           |
+| Python           | 3.11.7                                        |
+| OS(Linux)        | Linux 5.4.0-177-generic(Ubuntu 20.04.6)       |
+| C编译器(Linux)   | gcc 9.4.0                                     |
+| C编译优化(Linux) | gcc ljt_example.cpp -o ljt_example -ljpeg -O3 |
+| C#IDE            | VisualStudio 2022                             |
+| .Net             | .Net 6.0                                      |
+| C#构建选项       | Release Any CPU                               |
 
-分别运行[c语言实现](./split_example.c)、[python实现](./split_example.py)、[python PIL实现](./pil_example.py)，这将会对一张内存中的jpeg执行200次切分操作，并且不包括文件读写时间，则测试结果如下：
+分别运行下述的示例，这将会对一张内存中的jpeg执行200次切分操作，并且不包括文件读写时间，则测试结果如下：
 | 实现                       | 平均处理时长(ms) | FPS    | 备注                                                                                                                           |
 | -------------------------- | ---------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | c                          | 4.265            | 234.46 |                                                                                                                                |
@@ -105,6 +110,7 @@ python版本的最简单示例就是[./split_example.py]()，没有必要再展�
 | c                          | 4.920            | 203.25 | 将byte_array的扩容因子从默认的1.5改为2; </br>将split函数中，对byte_array的初始化空间从JPEG尺寸的1/10改为1/20                   |
 | c                          | 6.075            | 164.60 | `trim=true`; </br>将byte_array的扩容因子从默认的1.5改为2; </br>将split函数中，对byte_array的初始化空间从JPEG尺寸的1/10改为1/20 |
 | c                          | 5.240            | 190.83 | 对byte_array的初始化空间采用默认的10                                                                                           |
+| C#                         | 7.17             | 139.36 |                                                                                                                                |
 | python                     | 201.19           | 4.97   |                                                                                                                                |
 | [opencv](./cv_example.py)  | 355.87           | 2.81   |                                                                                                                                |
 | [pil](./pil_example.py)    | 422.7            | 2.36   |                                                                                                                                |
@@ -124,6 +130,7 @@ python版本的最简单示例就是[./split_example.py]()，没有必要再展�
 3. python实现相对c存在约40倍的性能差距，尽管在实现上，均尽可能地采用了最优的方法，但通过在python中对bytes进行枚举测试可以发现性能开销基本来自对其的枚举。
 4. PIL的实现中，实际上在将`tile.save(0)`去掉后，可以得到一个比python jpeg spliter更好的性能表现，然而在实际业务场景中，读取分割数据的期望下一步是将图片基于网络发送，因此不能够发送RGB格式的原始数据。
 5. 在Linux平台开展的的测试中，是否开启O3对此项目影响很大，且性能远超Windows（完全相同的硬件平台），可能是Windows会将业务线程调到其他核心导致的。此外，基于libjpeg-turbo的实现性能仅比PIL略高。
+6. C#版本的性能大概是同平台C版本的2/3，目前尚不清楚原因。但可观察到相比C版本，C#版本运行时CPU会有更多的内核态时间。
 
 ## 原理
 主要考虑了JPEG的结构，快速的将RST间的MCU分解到各个子图，并复用JPEG头信息，从而在不解码JPEG的情况下完成图片的分割。

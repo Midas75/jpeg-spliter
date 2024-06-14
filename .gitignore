@@ -4,3 +4,6 @@ raw
 __pycache__
 sub/*
 !sub/.gitkeep
+.vs
+obj
+bin
