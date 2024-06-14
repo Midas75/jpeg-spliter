@@ -83,20 +83,22 @@ C#版本的最简单示例也很简单，见[./CSharp/SplitExample.cs]()，建�
 - 尺寸：约3822KB
 
 采用的平台中，可能相关的项列举如下：
-| 配置             | 参数                                          |
-| ---------------- | --------------------------------------------- |
-| CPU              | i7-12700                                      |
-| MEM              | DDR4 64GB 2400MHz                             |
-| OS               | Windows10                                     |
-| C编译器          | MinGW GCC8.1.0 64-bit Release                 |
-| C编译优化        | -O3                                           |
-| Python           | 3.11.7                                        |
-| OS(Linux)        | Linux 5.4.0-177-generic(Ubuntu 20.04.6)       |
-| C编译器(Linux)   | gcc 9.4.0                                     |
-| C编译优化(Linux) | gcc ljt_example.cpp -o ljt_example -ljpeg -O3 |
-| C#IDE            | VisualStudio 2022                             |
-| .Net             | .Net 6.0                                      |
-| C#构建选项       | Release Any CPU                               |
+| 配置              | 参数                                          |
+| ----------------- | --------------------------------------------- |
+| CPU               | i7-12700                                      |
+| MEM               | DDR4 64GB 2400MHz                             |
+| OS                | Windows10                                     |
+| MinGW编译器       | MinGW GCC8.1.0 64-bit Release                 |
+| C编译优化         | -O3                                           |
+| C编译器（MSVC）   | cl 19.34.31937                                |
+| C编译优化（MSVC） | /O2                                           |
+| Python            | 3.11.7                                        |
+| OS(Linux)         | Linux 5.4.0-177-generic(Ubuntu 20.04.6)       |
+| C编译器(Linux)    | gcc 9.4.0                                     |
+| C编译优化(Linux)  | gcc ljt_example.cpp -o ljt_example -ljpeg -O3 |
+| C#IDE             | VisualStudio 2022                             |
+| .Net              | .Net 6.0                                      |
+| C#构建选项        | Release Any CPU                               |
 
 分别运行下述的示例，这将会对一张内存中的jpeg执行200次切分操作，并且不包括文件读写时间，则测试结果如下：
 | 实现                                | 平均处理时长(ms) | FPS    | 备注                                                                                                                           |
@@ -110,6 +112,8 @@ C#版本的最简单示例也很简单，见[./CSharp/SplitExample.cs]()，建�
 | c                                   | 4.920            | 203.25 | 将byte_array的扩容因子从默认的1.5改为2; </br>将split函数中，对byte_array的初始化空间从JPEG尺寸的1/10改为1/20                   |
 | c                                   | 6.075            | 164.60 | `trim=true`; </br>将byte_array的扩容因子从默认的1.5改为2; </br>将split函数中，对byte_array的初始化空间从JPEG尺寸的1/10改为1/20 |
 | c                                   | 5.240            | 190.83 | 对byte_array的初始化空间采用默认的10                                                                                           |
+| c(cl)                               | 4.775            | 209.42 | 采用cl.exe进行编译                                                                                                             |
+| c(cl)                               | 5.098            | 194.49 | 采用cl.exe进行编译，采用/arch:AVX2                                                                                             |
 | C#                                  | 7.17             | 139.36 |                                                                                                                                |
 | [Bitmap](./CSharp/BitmapExample.cs) | 7110.57          | 0.14   | 需要在项目属性中将入口类改为BitmapExample;</br>由于该方法过慢，因此`testTime=10`                                               |
 | python                              | 201.19           | 4.97   |                                                                                                                                |
@@ -132,7 +136,7 @@ C#版本的最简单示例也很简单，见[./CSharp/SplitExample.cs]()，建�
 4. PIL的实现中，实际上在将`tile.save(0)`去掉后，可以得到一个比python jpeg spliter更好的性能表现，然而在实际业务场景中，读取分割数据的期望下一步是将图片基于网络发送，因此不能够发送RGB格式的原始数据。
 5. 在Linux平台开展的的测试中，是否开启O3对此项目影响很大，且性能远超Windows（完全相同的硬件平台），可能是Windows会将业务线程调到其他核心导致的。此外，基于libjpeg-turbo的实现性能仅比PIL略高。
 6. C#版本的性能大概是同平台C版本的2/3，目前尚不清楚原因。但可观察到相比C版本，C#版本运行时CPU会有更多的内核态时间。
-
+7. MSVC编译结果性能略逊于MinGW编译结果，尚不清楚原因
 ## 原理
 主要考虑了JPEG的结构，快速的将RST间的MCU分解到各个子图，并复用JPEG头信息，从而在不解码JPEG的情况下完成图片的分割。
 
