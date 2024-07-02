@@ -1,6 +1,6 @@
 // Linux: gcc split_example.c -o split_example -std=c11 -O3
-
-// simd implementation: requires special compilation parameters, -mavx2 in mingw
+// Windows: cl split_example.c /O2
+// simd implementation: requires special compilation parameters
 // #include "jpeg_spliter_simd.c"
 
 #include "jpeg_spliter.c"

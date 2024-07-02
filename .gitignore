@@ -8,3 +8,6 @@ sub/*
 obj
 bin
 *.obj
+*.dll
+*.exp
+*.lib

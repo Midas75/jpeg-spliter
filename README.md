@@ -6,6 +6,7 @@
 - [x] python的对比测试
 - [x] 基于c的bytearray实现以及基本功能测试
 - [x] python对bytes进行迭代的性能测试
+- [x] 构建为DLL以供其他方法的引用
 - [ ] 自动读取JPEG相关参数并进行验证
 - [ ] 对JPEG各格式进行兼容性测试 
 - [x] 更多实验数据
@@ -89,8 +90,6 @@ C#版本的最简单示例也很简单，见[./CSharp/SplitExample.cs]()，建�
 | CPU               | i7-12700                                      |
 | MEM               | DDR4 64GB 2400MHz                             |
 | OS                | Windows10                                     |
-| MinGW编译器       | MinGW GCC8.1.0 64-bit Release                 |
-| C编译优化         | -O3                                           |
 | C编译器（MSVC）   | cl 19.34.31937                                |
 | C编译优化（MSVC） | /O2                                           |
 | Python            | 3.11.7                                        |
@@ -102,27 +101,24 @@ C#版本的最简单示例也很简单，见[./CSharp/SplitExample.cs]()，建�
 | C#构建选项        | Release Any CPU                               |
 
 分别运行下述的示例，这将会对一张内存中的jpeg执行200次切分操作，并且不包括文件读写时间，则测试结果如下：
-| 实现                                | 平均处理时长(ms) | FPS    | 备注                                                                                                                           |
-| ----------------------------------- | ---------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| c                                   | 4.265            | 234.46 |                                                                                                                                |
-| c                                   | 5.820            | 171.82 | `trim=true`                                                                                                                    |
-| c                                   | 4.275            | 233.91 | 将byte_array的扩容因子从默认的1.5改为2                                                                                         |
-| c                                   | 4.755            | 210.30 | 将split函数中，对byte_array的初始化空间从JPEG尺寸的1/10改为1/20                                                                |
-| c                                   | 4.325            | 231.21 | 将split函数中，对byte_array的初始化空间从JPEG尺寸的1/10改为1（必定不会扩容）                                                   |
-| c                                   | 5.925            | 168.77 | `trim=true`; </br>将split函数中，对byte_array的初始化空间从JPEG尺寸的1/10改为1（必定不会扩容）                                 |
-| c                                   | 4.920            | 203.25 | 将byte_array的扩容因子从默认的1.5改为2; </br>将split函数中，对byte_array的初始化空间从JPEG尺寸的1/10改为1/20                   |
-| c                                   | 6.075            | 164.60 | `trim=true`; </br>将byte_array的扩容因子从默认的1.5改为2; </br>将split函数中，对byte_array的初始化空间从JPEG尺寸的1/10改为1/20 |
-| c                                   | 5.240            | 190.83 | 对byte_array的初始化空间采用默认的10                                                                                           |
-| c(SIMD256)                          | 5.190            | 192.67 | 采用SIMD指令集对FF查找进行加速的[实现版本](./jpeg_spliter_simd.c)，在MinGW中需开启AVX指令集`-mavx2`                            |
-| c(cl)                               | 4.775            | 209.42 | 采用cl.exe进行编译                                                                                                             |
-| c(cl)                               | 5.098            | 194.49 | 采用cl.exe进行编译，采用/arch:AVX2                                                                                             |
-| C#                                  | 7.17             | 139.36 |                                                                                                                                |
-| [Bitmap](./CSharp/BitmapExample.cs) | 7110.57          | 0.14   | 需要在项目属性中将入口类改为BitmapExample;</br>由于该方法过慢，因此`testTime=10`                                               |
-| python                              | 201.19           | 4.97   |                                                                                                                                |
-| [opencv](./cv_example.py)           | 355.87           | 2.81   |                                                                                                                                |
-| [pil](./pil_example.py)             | 422.7            | 2.36   |                                                                                                                                |
-| [pil](./pil_example.py)             | 184. 81          | 5.41   | 不执行`tile.save(BytesIO())`                                                                                                   |
-| [bet](./byte_enum_test.py)          | 113.07           | 8.84   | 不做任何处理，仅枚举并读取图片中的每个byte，以阐述python实现的主要性能瓶颈                                                     |
+| 实现                                   | 平均处理时长(ms) | FPS     | 备注                                                                                                 |
+| -------------------------------------- | ---------------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| [c](./split_example.c)                 | 4.300            | 232.55  |                                                                                                      |
+| c                                      | 6.204            | 161.18  | `trim=true`                                                                                          |
+| c                                      | 4.211            | 237.45  | 将byte_array的扩容因子从默认的1.5改为2                                                               |
+| c                                      | 4.822            | 207.37  | 将split函数中，对byte_array的初始化空间从JPEG尺寸的1/10改为1/20                                      |
+| c                                      | 4.163            | 240.19  | 将split函数中，对byte_array的初始化空间从JPEG尺寸的1/10改为1（必定不会扩容）                         |
+| c                                      | 5.128            | 195.00  | 对byte_array的初始化空间采用默认的10                                                                 |
+| c([dll](./DLL/dll_example.c))          | 3.398            | 294.274 | 通过编译为dll再引用，在[DLL]()下执行nmake                                                            |
+| c(dll)                                 | 4.733            | 211.296 | 通过编译为dll再引用，但每次处理时重新初始化`initSplitContext`                                        |
+| c(SIMD256)                             | 5.256            | 190.26  | 采用SIMD指令集对FF查找进行加速的[实现版本](./jpeg_spliter_simd.c)，在cl中需开启AVX指令集`/arch:AVX2` |
+| [C#](./CSharp/SplitExample.cs)         | 7.17             | 139.36  |                                                                                                      |
+| [C# Bitmap](./CSharp/BitmapExample.cs) | 7110.57          | 0.14    | 需要在项目属性中将入口类改为BitmapExample;由于该方法过慢，因此`testTime=10`                          |
+| [python](./split_example.py)           | 201.19           | 4.97    |                                                                                                      |
+| [python opencv](./cv_example.py)       | 355.87           | 2.81    |                                                                                                      |
+| [python pil](./pil_example.py)         | 422.7            | 2.36    |                                                                                                      |
+| python pil                             | 184. 81          | 5.41    | 不执行`tile.save(BytesIO())`                                                                         |
+| [bet](./byte_enum_test.py)             | 113.07           | 8.84    | 不做任何处理，仅枚举并读取图片中的每个byte，以阐述python实现的主要性能瓶颈                           |
 
 此外，考察在Linux平台下的性能（因为可以直接下载可用的[libjpeg-turbo](https://libjpeg-turbo.org/)：`apt install libjpeg-turbo-dev8`）。尽管调用的头与连接的动态库均名为libjpeg，但实际其源码是libjpeg-turbo的实现。
 | 实现                     | 平均处理时长(ms) | FPS    | 备注         |
@@ -138,8 +134,7 @@ C#版本的最简单示例也很简单，见[./CSharp/SplitExample.cs]()，建�
 4. PIL的实现中，实际上在将`tile.save(0)`去掉后，可以得到一个比python jpeg spliter更好的性能表现，然而在实际业务场景中，读取分割数据的期望下一步是将图片基于网络发送，因此不能够发送RGB格式的原始数据。
 5. 在Linux平台开展的的测试中，是否开启O3对此项目影响很大，且性能远超Windows（完全相同的硬件平台），可能是Windows会将业务线程调到其他核心导致的。此外，基于libjpeg-turbo的实现性能仅比PIL略高。
 6. C#版本的性能大概是同平台C版本的2/3，目前尚不清楚原因。但可观察到相比C版本，C#版本运行时CPU会有更多的内核态时间。
-7. MSVC编译结果性能略逊于MinGW编译结果，尚不清楚原因
-8. 观察到采用SIMD指令集后，反而性能衰减较多
+7. 观察到采用SIMD指令集后，反而性能衰减较多
 ## SIMD指令集版本
 接上文，分析整个业务中，最为耗时的是对JPEG图片中的0xFF进行查找。由于大部分对字节的遍历均不会成立`b==0xFF`的逻辑，因此理论上进入子if的判断是少数情况。
 因此，考虑引入并行指令集SIMD对0xFF查找优化，实现见[./jpeg_spliter_simd.c]()。
@@ -177,6 +172,49 @@ diff check passed
 | SIMD128 | 0xFF | 2125     | 2048 |
 
 在这一验证中，显然可以观察到FF分布对结果的影响，且JPEG产生的随机分布产生的挑战是最大的，猜测这一分布可能导致了更频繁的分支预测失误。
+## 集成测试
+本节中，阐述将[上游任务](https://gitee.com/sun-zhongjie-0426/unity-native-rendering-plugin-d3-d11-cuda)与该任务整合起来进行Unity中业务构建的测试。
+### 任务选取
+在Unity中，有如下的内容：
+![Unity Scene](pics/unity_scene.png)
+
+一辆警车会缓慢地在场景中旋转，有20个同位置的Camera会将内容渲染到RenderTexture上。
+该RenderTexture不但会显示到UI Camera上，还会传输给GPU渲染为JPEG。之后，这一JPEG会采用本库进行分割。流程如下：
+![Split State](pics/split_state.png)
+
+对于分割方式，采取了如下四种实现：
+- NO_SPLIT：不分割，仅编码
+- SPLIT：基于C#实现的分割
+- NATIVE_SPLIT：基于c编译的dll实现的分割
+- ASYNC_NATIVE_SPLIT：基于c编译的dll实现的分割，但是尽可能地将分割任务交付给另一个线程异步执行
+
+对于`ASYNC_NATIVE_SPLIT`，两线程间交互采用了两个信号量实现，逻辑如下图：
+![AsyncNativeSplit](pics/async_native_split.png)
+### 测试方法
+- 针对四种方案，测试性能表现
+- 在Unity Editor中，观察FPS、main thread、render thread指标
+- 使用Unity Profiler（stand alone）观察业务耗时
+- 利用任务管理器观察CPU消耗
+- 编码整张图片尺寸：5200x2840，五行四列
+### 测试结果
+| 分割方式           | FPS  | Main Thread(ms) | Render Thread(ms) | Profiler Cost(ms) | delta(ms) | CPU(%) |
+| ------------------ | ---- | --------------- | ----------------- | ----------------- | --------- | ------ |
+| NO_SPLIT           | 90.6 | 11.3            | 9.2               | 6.48              | 0.00      | 19.4   |
+| SPLIT              | 10.5 | 95.0            | 90.7              | 83.47             | 76.99     | 15.0   |
+| NATIVE_SPLIT       | 58.5 | 17.1            | 14.8              | 11.02             | 4.54      | 19.7   |
+| ASYNC_NATIVE_SPLIT | 75.7 | 13.2            | 11.2              | 8.47              | 2.09      | 20.0   |
+
+上述结果中：
+- `NO_SPLIT`作为基准测试，用于衡量整体性能
+- `Main Thread(ms)`是Unity主线程单帧时间
+- `Render Thread(ms)`是Unity渲染线程单帧时间
+- `Profiler Cost(ms)`是Unity Profiler中，PlayerEndOfFrame函数的单帧执行时间，理论上等于GPUJPEG编码时间+JPEG分割时间
+- `delta(ms)`是相较于基准测试，`Profiler Cost(ms)`额外花费的时间，理论上等于JPEG分割时间
+- `CPU(%)`为任务管理器观察到的Unity Editor进程的CPU占比
+### 测试总结
+1. 观察到ASYNC_NATIVE_SPLIT能够最大程度地提升FPS，尽可能接近不分割场景的帧数，推测性能消耗在于信号量、锁带来的线程切换
+2. [基于C#实现的SPLIT](./CSharp/JpegSpliter.cs)的表现最差，且与上文测试结果不符。推测原因是由于在上文测试采用的.Net环境与Unity中不同
+3. 综上，利用异步的方法可将单帧开销控制在2ms内，最快地提供可用分割图。尽管额外创建了线程，但CPU总开销没有显著提升
 ## 原理
 主要考虑了JPEG的结构，快速的将RST间的MCU分解到各个子图，并复用JPEG头信息，从而在不解码JPEG的情况下完成图片的分割。
 

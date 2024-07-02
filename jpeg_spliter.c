@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <string.h>
 #define MCU_LENGTH 8
-
+#define FACTOR2 false
 /**
  * @brief a simple implementation for byte array
  *
@@ -33,24 +33,21 @@ byte_array *ba_new()
 {
     return ba_new_with_length(10);
 }
-void ba_grow(byte_array *ba, size_t length, bool factor2)
+void ba_grow(byte_array *ba, size_t length)
 {
     if (length < ba->max_length)
     {
         length = ba->max_length;
     }
     size_t new_length = 0;
-    if (factor2)
-    {
-        new_length = length << 1;
-    }
-    else
-    {
-        new_length = length >> 1;
-        if (new_length == 0)
-            new_length += 1;
-        new_length += length;
-    }
+#if FACTOR2
+    new_length = length << 1;
+#else
+    new_length = length >> 1;
+    if (new_length == 0)
+        new_length += 1;
+    new_length += length;
+#endif
 
     uint8_t *new_data = (uint8_t *)malloc(sizeof(uint8_t) * new_length);
     memcpy(new_data, ba->data, ba->length);
@@ -62,7 +59,7 @@ void ba_write_with_position(byte_array *ba, size_t position, uint8_t *src, size_
 {
     if (position + length > ba->max_length)
     {
-        ba_grow(ba, position + length, false);
+        ba_grow(ba, position + length);
     }
     memcpy(ba->data + position, src, length);
     ba->length = position + length;
@@ -123,7 +120,8 @@ int get_mcu_sub(int counter, const spliter_param *param)
 }
 double split(uint8_t *data, size_t length, spliter_param *param, byte_array **out)
 {
-    clock_t start_time = clock();
+    struct timespec start_ns, end_ns;
+    timespec_get(&start_ns, TIME_UTC);
     int count = param->col * param->row;
     for (int i = 0; i < count; i++)
     {
@@ -133,7 +131,7 @@ double split(uint8_t *data, size_t length, spliter_param *param, byte_array **ou
         }
         else
         {
-            out[i] = ba_new_with_length((length / count) << 2);
+            out[i] = ba_new_with_length((length / count) << 1);
         }
     }
 
@@ -215,6 +213,7 @@ double split(uint8_t *data, size_t length, spliter_param *param, byte_array **ou
             ba_trim(out[i]);
         }
     }
-    double result = (double)(clock() - start_time) / CLOCKS_PER_SEC;
+    timespec_get(&end_ns, TIME_UTC);
+    double result = (end_ns.tv_sec - start_ns.tv_sec) + (end_ns.tv_nsec - start_ns.tv_nsec) * 1.0 / 1e9;
     return result;
 }
